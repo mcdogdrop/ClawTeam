@@ -29,6 +29,16 @@ Full compatibility with [Claude Code](https://claude.ai/claude-code), [Codex](ht
 
 ---
 
+## 📰 News
+
+**2026-03-18** ClawTeam project launched publicly.
+
+**2026-03-23** ClawTeam `v0.2.0` is released today.
+
+**2026-03** The current baseline includes config management, multi-user workflows, Web UI, P2P transport, and team templates.
+
+---
+
 ## ✨ ClawTeam's Key Features
 
 <table align="center" width="100%">
@@ -114,14 +124,24 @@ Full compatibility with [Claude Code](https://claude.ai/claude-code), [Codex](ht
 
 ---
 
-<p align="center">
-  <video src="https://github.com/user-attachments/assets/7e2f0ecd-8fe3-4970-90ac-5c9669ff060c" controls muted playsinline width="800">
-    <a href="https://github.com/user-attachments/assets/7e2f0ecd-8fe3-4970-90ac-5c9669ff060c">Watch the demo video</a>
-  </video>
-</p>
-<p align="center">
-  <a href="https://github.com/user-attachments/assets/7e2f0ecd-8fe3-4970-90ac-5c9669ff060c">Open the demo video directly</a>
-</p>
+<table align="center" width="100%">
+<tr>
+<td width="50%" align="center" style="vertical-align: top; padding: 10px;">
+
+<strong>v0.1.0</strong>
+
+https://github.com/user-attachments/assets/7e2f0ecd-8fe3-4970-90ac-5c9669ff060c
+
+</td>
+<td width="50%" align="center" style="vertical-align: top; padding: 10px;">
+
+<strong>v0.2.0</strong>
+
+https://github.com/user-attachments/assets/fd23be91-5cf4-457c-a77e-bac24b76e58f
+
+</td>
+</tr>
+</table>
 
 
 ☝️ Intelligent leader agent orchestrates 8 specialized sub-agents across 8 H100 GPUs, autonomously designing experiments and dynamically reallocating resources based on real-time performance.
@@ -386,10 +406,22 @@ If the agent CLI does not run correctly by itself, `clawteam spawn` will not fix
 
 ### ⚡ Option 1: Let the Agent Drive (Recommended)
 
-ClawTeam ships with a **Claude Code skill** that auto-activates. Just install and prompt:
+ClawTeam ships with a reusable skill in `skills/clawteam/`.
+
+**Claude Code**
+
+Install the skill into `~/.claude/skills/clawteam`, then prompt:
 
 ```
 "Build a web app. Use clawteam to split the work across multiple agents."
+```
+
+**Codex**
+
+Install the same skill into `$CODEX_HOME/skills/clawteam` (typically `~/.codex/skills/clawteam`), then prompt:
+
+```
+Use $clawteam to split this task across multiple agents and coordinate the team to completion.
 ```
 
 The agent will automatically create a team, spawn workers, assign tasks, and coordinate — using `clawteam` CLI commands under the hood.
@@ -569,7 +601,7 @@ Vertex, use `profile` + `preset` and then spawn with `--profile`.
 | 🌐 **Cross-Machine** | Shared filesystem (NFS/SSHFS) or P2P transport for distributed teams |
 | 👥 **Multi-User** | Namespace agents by user — multiple humans can share a team |
 | ⚙️ **Configuration** | Persistent config: env var > config file > default priority |
-| 🔌 **Claude Code Skill** | Auto-triggers when users ask about multi-agent coordination |
+| 🔌 **Agent Skill** | Reusable skill entry for Claude Code and Codex workflows |
 
 ---
 
@@ -736,6 +768,16 @@ All state lives in `~/.clawteam/` as JSON files. No database, no server, no clou
 | **Phase 3** | v0.6 | Agent Marketplace — discover and reuse community agent templates | 💡 Exploring |
 | **Phase 4** | v0.7 | Adaptive Scheduling — dynamically reassign tasks based on agent performance | 💡 Exploring |
 | **Phase 5** | v1.0 | Production-grade — auth, permissions, audit logs | 💡 Exploring |
+
+### Milestones
+
+| Milestone | Status | Notes |
+|---|---|---|
+| v0.1.x | ✅ Shipped | Core CLI, team/task/inbox flows, board, templates, packaging. |
+| v0.2.0 | ✅ Released | Stabilization, docs refresh, spawn/workspace fixes, and release packaging. |
+| v0.3 | 📍 Roadmap baseline | File + P2P transport, Web UI, multi-user workflow, team templates. |
+
+For the longer-term plan, see [ROADMAP.md](ROADMAP.md).
 
 ---
 

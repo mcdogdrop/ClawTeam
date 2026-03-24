@@ -27,9 +27,15 @@
 
 [Claude Code](https://claude.ai/claude-code), [Codex](https://openai.com/codex), [OpenClaw](https://github.com/openclaw/openclaw), [nanobot](https://github.com/HKUDS/nanobot), [Cursor](https://cursor.com) 그리고 각종 CLI 에이전트와 폭넓게 호환됩니다.&nbsp;&nbsp;[**English**](README.md) | [**中文文档**](README_CN.md)
 
-<p align="center">
-  <img src="assets/teaser.png" alt="ClawTeam - AI agents orchestrating themselves" width="800">
-</p>
+---
+
+## 📰 News
+
+**2026-03-18** ClawTeam 프로젝트가 공개 출시되었습니다.
+
+**2026-03-23** ClawTeam `v0.2.0`이 오늘 릴리스되었습니다.
+
+**2026-03** 현재 기준선에는 config 관리, multi-user 워크플로, Web UI, P2P transport, team template이 포함됩니다.
 
 ---
 
@@ -118,18 +124,32 @@
 
 ---
 
-<p align="center">
-  <video src="https://github.com/user-attachments/assets/7e2f0ecd-8fe3-4970-90ac-5c9669ff060c" controls muted playsinline width="800">
-    <a href="https://github.com/user-attachments/assets/7e2f0ecd-8fe3-4970-90ac-5c9669ff060c">데모 비디오 보기</a>
-  </video>
-</p>
-<p align="center">
-  <a href="https://github.com/user-attachments/assets/7e2f0ecd-8fe3-4970-90ac-5c9669ff060c">데모 비디오 직접 열기</a>
-</p>
+<table align="center" width="100%">
+<tr>
+<td width="50%" align="center" style="vertical-align: top; padding: 10px;">
+
+<strong>v0.1.0</strong>
+
+https://github.com/user-attachments/assets/7e2f0ecd-8fe3-4970-90ac-5c9669ff060c
+
+</td>
+<td width="50%" align="center" style="vertical-align: top; padding: 10px;">
+
+<strong>v0.2.0</strong>
+
+https://github.com/user-attachments/assets/fd23be91-5cf4-457c-a77e-bac24b76e58f
+
+</td>
+</tr>
+</table>
 
 ☝️ 지능형 리더 에이전트가 8대의 H100 GPU에 걸쳐 8개의 전문 서브에이전트를 조율하며, 실시간 성능에 맞춰 자원을 동적으로 재배치하면서 실험을 자율적으로 설계합니다.
 
 🧠 시스템은 팀 전반의 성과를 종합해 전략을 스스로 발전시키며, 사람 개입 없이 연구 자동화를 실현합니다.
+
+<p align="center">
+  <img src="assets/teaser.png" alt="ClawTeam - AI agents orchestrating themselves" width="800">
+</p>
 
 ---
 
@@ -360,10 +380,22 @@ pip install -e ".[p2p]"
 
 ### ⚡ 옵션 1: 에이전트에게 맡기기 (권장)
 
-ClawTeam에는 **Claude Code 스킬**이 포함되어 있어 자동으로 활성화됩니다. 설치한 뒤 이렇게 프롬프트를 주면 됩니다.
+ClawTeam에는 `skills/clawteam/`에 재사용 가능한 skill이 들어 있습니다.
+
+**Claude Code**
+
+이 skill을 `~/.claude/skills/clawteam`에 설치한 뒤, 이렇게 프롬프트를 주면 됩니다.
 
 ```
 "웹 앱을 만들어줘. 작업은 clawteam으로 여러 에이전트에게 나눠서 진행해."
+```
+
+**Codex**
+
+같은 skill을 `$CODEX_HOME/skills/clawteam`(보통 `~/.codex/skills/clawteam`)에 설치한 뒤, 이렇게 요청하면 됩니다.
+
+```
+이 작업을 여러 에이전트 팀으로 나누고 끝까지 조율하도록 $clawteam을 사용해줘.
 ```
 
 그러면 에이전트가 내부적으로 `clawteam` CLI 명령을 사용해 팀을 만들고, 워커를 띄우고, 작업을 나누고, 전체 흐름을 조율합니다.
@@ -462,7 +494,7 @@ ClawTeam은 셸 명령을 실행할 수 있는 **어떤 CLI 에이전트**와도
 | 🌐 **멀티머신 지원** | 공유 파일시스템(NFS/SSHFS) 또는 P2P transport로 분산 팀 운영 |
 | 👥 **멀티유저 지원** | 사용자별 네임스페이스로 여러 사람이 한 팀을 공유 가능 |
 | ⚙️ **설정 관리** | 영속 설정 우선순위: 환경 변수 > 설정 파일 > 기본값 |
-| 🔌 **Claude Code 스킬** | 사용자가 멀티에이전트 협업을 요청하면 자동 트리거 |
+| 🔌 **에이전트 스킬** | Claude Code와 Codex에서 재사용 가능한 skill 진입점 |
 
 ---
 
@@ -629,6 +661,14 @@ clawteam config health
 | **Phase 3** | v0.6 | Agent Marketplace, 커뮤니티 템플릿 탐색 및 재사용 | 💡 검토 중 |
 | **Phase 4** | v0.7 | Adaptive Scheduling, 에이전트 성능에 따른 동적 작업 재배치 | 💡 검토 중 |
 | **Phase 5** | v1.0 | 프로덕션급 기능, auth, permissions, audit logs | 💡 검토 중 |
+
+### Milestones
+
+| Milestone | Status | Notes |
+|---|---|---|
+| v0.1.x | ✅ 출시됨 | 핵심 CLI, 팀/작업/메시지 흐름, 보드, 템플릿, 패키징 릴리스. |
+| v0.2.0 | ✅ 출시됨 | 안정화 수정, 문서 개편, spawn/workspace 수정, release 패키징. |
+| v0.3 | 📍 로드맵 기준선 | File + P2P, Web UI, multi-user workflow, team templates. |
 
 ---
 
