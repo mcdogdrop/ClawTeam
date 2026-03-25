@@ -95,6 +95,28 @@ def _spawn_backend_hint(backend: str | None, team: str | None) -> str:
     )
 
 
+def _load_skill_content(name: str) -> str | None:
+    """Load skill content from ~/.claude/skills.
+
+    Supports both directory format (skills/<name>/SKILL.md) and
+    single-file format (skills/<name>.md).
+    """
+    skills_root = Path.home() / ".claude" / "skills"
+    skill_dir = skills_root / name
+    if skill_dir.is_dir():
+        skill_file = skill_dir / "SKILL.md"
+        if not skill_file.exists():
+            markdown_files = sorted(skill_dir.glob("*.md"))
+            skill_file = markdown_files[0] if markdown_files else None
+        if skill_file and skill_file.exists():
+            return skill_file.read_text(encoding="utf-8")
+
+    single_file = skills_root / f"{name}.md"
+    if single_file.exists():
+        return single_file.read_text(encoding="utf-8")
+    return None
+
+
 def _parse_key_value_items(items: list[str], *, label: str) -> dict[str, str]:
     """Parse repeated KEY=VALUE CLI options into a dict."""
     parsed: dict[str, str] = {}
@@ -2798,6 +2820,7 @@ def spawn_agent(
     skip_permissions: Optional[bool] = typer.Option(None, "--skip-permissions/--no-skip-permissions", help="Skip tool approval for claude (default: from config, true)"),
     resume: bool = typer.Option(False, "--resume", "-r", help="Resume previous session if available"),
     replace: bool = typer.Option(False, "--replace", help="Replace a running agent with the same name"),
+    skill: Optional[list[str]] = typer.Option(None, "--skill", help="Skill name(s) to inject into the agent's system prompt (repeatable, claude only)"),
 ):
     """Spawn a new agent process with identity + task as its initial prompt.
 
@@ -2969,6 +2992,20 @@ def spawn_agent(
             if prompt:
                 prompt += "\nYou are resuming a previous session."
 
+    system_prompt = None
+    if skill:
+        skill_parts: list[str] = []
+        for skill_name in skill:
+            content = _load_skill_content(skill_name)
+            if content is None:
+                console.print(
+                    f"[yellow]Warning: skill '{skill_name}' not found in ~/.claude/skills/[/yellow]"
+                )
+                continue
+            skill_parts.append(content)
+        if skill_parts:
+            system_prompt = "\n\n".join(skill_parts)
+
     result = be.spawn(
         command=command,
         agent_name=_name,
@@ -2979,6 +3016,7 @@ def spawn_agent(
         env=profile_env or None,
         cwd=cwd,
         skip_permissions=skip_permissions,
+        system_prompt=system_prompt,
     )
 
     if result.startswith("Error"):

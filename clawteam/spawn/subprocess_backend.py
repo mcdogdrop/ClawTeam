@@ -6,7 +6,7 @@ import os
 import shlex
 import subprocess
 
-from clawteam.spawn.adapters import NativeCliAdapter
+from clawteam.spawn.adapters import NativeCliAdapter, is_claude_command
 from clawteam.spawn.base import SpawnBackend
 from clawteam.spawn.cli_env import build_spawn_path, resolve_clawteam_executable
 from clawteam.spawn.command_validation import validate_spawn_command
@@ -30,9 +30,12 @@ class SubprocessBackend(SpawnBackend):
         env: dict[str, str] | None = None,
         cwd: str | None = None,
         skip_permissions: bool = False,
+        system_prompt: str | None = None,
     ) -> str:
         spawn_env = os.environ.copy()
         clawteam_bin = resolve_clawteam_executable()
+        spawn_env.setdefault("LANG", "en_US.UTF-8")
+        spawn_env.setdefault("LC_CTYPE", "UTF-8")
         spawn_env.update({
             "CLAWTEAM_AGENT_ID": agent_id,
             "CLAWTEAM_AGENT_NAME": agent_name,
@@ -67,6 +70,9 @@ class SubprocessBackend(SpawnBackend):
         normalized_command = prepared.normalized_command
         validation_command = normalized_command
         final_command = list(prepared.final_command)
+        if system_prompt and is_claude_command(normalized_command):
+            insert_at = final_command.index("-p") if "-p" in final_command else len(final_command)
+            final_command[insert_at:insert_at] = ["--append-system-prompt", system_prompt]
 
         command_error = validate_spawn_command(validation_command, path=spawn_env["PATH"], cwd=cwd)
         if command_error:

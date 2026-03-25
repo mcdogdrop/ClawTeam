@@ -898,6 +898,174 @@ def test_resolve_clawteam_executable_accepts_relative_path_with_explicit_directo
     assert build_spawn_path("/usr/bin:/bin").startswith(f"{relative_bin.parent.resolve()}:")
 
 
+def test_subprocess_backend_injects_system_prompt_for_claude(monkeypatch, tmp_path):
+    clawteam_bin = tmp_path / "bin" / "clawteam"
+    clawteam_bin.parent.mkdir(parents=True)
+    clawteam_bin.write_text("#!/bin/sh\n")
+    monkeypatch.setattr(sys, "argv", [str(clawteam_bin)])
+
+    captured: dict[str, object] = {}
+
+    def fake_popen(cmd, **kwargs):
+        captured["cmd"] = cmd
+        captured["env"] = kwargs["env"]
+        return DummyProcess()
+
+    monkeypatch.setattr(
+        "clawteam.spawn.command_validation.shutil.which",
+        lambda name, path=None: "/usr/bin/claude" if name == "claude" else None,
+    )
+    monkeypatch.setattr("clawteam.spawn.subprocess_backend.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("clawteam.spawn.registry.register_agent", lambda **_: None)
+
+    backend = SubprocessBackend()
+    backend.spawn(
+        command=["claude"],
+        agent_name="worker1",
+        agent_id="agent-1",
+        agent_type="general-purpose",
+        team_name="demo-team",
+        prompt="do work",
+        skip_permissions=True,
+        system_prompt="You are an expert coder.",
+    )
+
+    cmd = captured["cmd"]
+    assert "--append-system-prompt" in cmd
+    assert "You are an expert coder." in cmd
+    assert cmd.index("--append-system-prompt") < cmd.index(" -p ")
+
+
+def test_subprocess_backend_skips_system_prompt_for_non_claude(monkeypatch, tmp_path):
+    clawteam_bin = tmp_path / "bin" / "clawteam"
+    clawteam_bin.parent.mkdir(parents=True)
+    clawteam_bin.write_text("#!/bin/sh\n")
+    monkeypatch.setattr(sys, "argv", [str(clawteam_bin)])
+
+    captured: dict[str, object] = {}
+
+    def fake_popen(cmd, **kwargs):
+        captured["cmd"] = cmd
+        return DummyProcess()
+
+    monkeypatch.setattr(
+        "clawteam.spawn.command_validation.shutil.which",
+        lambda name, path=None: "/usr/bin/codex" if name == "codex" else None,
+    )
+    monkeypatch.setattr("clawteam.spawn.subprocess_backend.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("clawteam.spawn.registry.register_agent", lambda **_: None)
+
+    backend = SubprocessBackend()
+    backend.spawn(
+        command=["codex"],
+        agent_name="worker1",
+        agent_id="agent-1",
+        agent_type="general-purpose",
+        team_name="demo-team",
+        prompt="do work",
+        system_prompt="some system text",
+    )
+
+    assert "--append-system-prompt" not in captured["cmd"]
+
+
+def test_subprocess_backend_sets_utf8_locale(monkeypatch, tmp_path):
+    clawteam_bin = tmp_path / "bin" / "clawteam"
+    clawteam_bin.parent.mkdir(parents=True)
+    clawteam_bin.write_text("#!/bin/sh\n")
+    monkeypatch.setattr(sys, "argv", [str(clawteam_bin)])
+    monkeypatch.delenv("LANG", raising=False)
+    monkeypatch.delenv("LC_CTYPE", raising=False)
+
+    captured: dict[str, object] = {}
+
+    def fake_popen(cmd, **kwargs):
+        captured["env"] = kwargs["env"]
+        return DummyProcess()
+
+    monkeypatch.setattr(
+        "clawteam.spawn.command_validation.shutil.which",
+        lambda name, path=None: "/usr/bin/claude" if name == "claude" else None,
+    )
+    monkeypatch.setattr("clawteam.spawn.subprocess_backend.subprocess.Popen", fake_popen)
+    monkeypatch.setattr("clawteam.spawn.registry.register_agent", lambda **_: None)
+
+    backend = SubprocessBackend()
+    backend.spawn(
+        command=["claude"],
+        agent_name="worker1",
+        agent_id="agent-1",
+        agent_type="general-purpose",
+        team_name="demo-team",
+        prompt="使用技能",
+    )
+
+    env = captured["env"]
+    assert env.get("LANG") == "en_US.UTF-8"
+    assert env.get("LC_CTYPE") == "UTF-8"
+
+
+def test_tmux_backend_injects_system_prompt_for_claude(monkeypatch, tmp_path):
+    monkeypatch.setenv("PATH", "/usr/bin:/bin")
+    clawteam_bin = tmp_path / "venv" / "bin" / "clawteam"
+    clawteam_bin.parent.mkdir(parents=True)
+    clawteam_bin.write_text("#!/bin/sh\n")
+    monkeypatch.setattr(sys, "argv", [str(clawteam_bin)])
+
+    run_calls: list[list[str]] = []
+
+    class Result:
+        def __init__(self, returncode: int = 0, stdout: str = ""):
+            self.returncode = returncode
+            self.stdout = stdout
+            self.stderr = ""
+
+    def fake_run(args, **kwargs):
+        run_calls.append(args)
+        if args[:3] == ["tmux", "has-session", "-t"]:
+            return Result(returncode=1)
+        if args[:3] == ["tmux", "list-panes", "-t"]:
+            return Result(returncode=0, stdout="9876\n")
+        return Result(returncode=0)
+
+    def fake_which(name, path=None):
+        if name == "tmux":
+            return "/usr/bin/tmux"
+        if name == "claude":
+            return "/usr/bin/claude"
+        return None
+
+    monkeypatch.setattr("clawteam.spawn.tmux_backend.shutil.which", fake_which)
+    monkeypatch.setattr("clawteam.spawn.command_validation.shutil.which", fake_which)
+    monkeypatch.setattr("clawteam.spawn.tmux_backend.subprocess.run", fake_run)
+    monkeypatch.setattr("clawteam.spawn.tmux_backend.time.sleep", lambda *_: None)
+    monkeypatch.setattr(
+        "clawteam.spawn.tmux_backend._confirm_workspace_trust_if_prompted",
+        lambda *_, **__: False,
+    )
+    monkeypatch.setattr(
+        "clawteam.spawn.tmux_backend._wait_for_tui_ready",
+        lambda *_, **__: True,
+    )
+    monkeypatch.setattr("clawteam.spawn.registry.register_agent", lambda **_: None)
+
+    backend = TmuxBackend()
+    backend.spawn(
+        command=["claude"],
+        agent_name="worker1",
+        agent_id="agent-1",
+        agent_type="general-purpose",
+        team_name="demo-team",
+        prompt="do work",
+        cwd="/tmp/demo",
+        system_prompt="You are an expert coder.",
+    )
+
+    new_session = next(call for call in run_calls if call[:3] == ["tmux", "new-session", "-d"])
+    full_cmd = new_session[-1]
+    assert "--append-system-prompt 'You are an expert coder.'" in full_cmd
+
+
 # ---------------------------------------------------------------------------
 # _wait_for_cli_ready tests
 # ---------------------------------------------------------------------------
@@ -1143,3 +1311,39 @@ def test_subprocess_backend_opencode_skip_permissions_and_prompt(monkeypatch, tm
     )
 
     assert "opencode --yolo -p 'fix the bug'" in captured["cmd"]
+
+
+def test_load_skill_content_directory_format(tmp_path, monkeypatch):
+    from clawteam.cli.commands import _load_skill_content
+
+    skills_root = tmp_path / ".claude" / "skills"
+    skill_dir = skills_root / "my-skill"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text("skill content here", encoding="utf-8")
+
+    monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
+
+    result = _load_skill_content("my-skill")
+    assert result == "skill content here"
+
+
+def test_load_skill_content_single_file_format(tmp_path, monkeypatch):
+    from clawteam.cli.commands import _load_skill_content
+
+    skills_root = tmp_path / ".claude" / "skills"
+    skills_root.mkdir(parents=True)
+    (skills_root / "gsd-health.md").write_text("# GSD Health\ncheck it", encoding="utf-8")
+
+    monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
+
+    result = _load_skill_content("gsd-health")
+    assert result == "# GSD Health\ncheck it"
+
+
+def test_load_skill_content_returns_none_for_missing(tmp_path, monkeypatch):
+    from clawteam.cli.commands import _load_skill_content
+
+    (tmp_path / ".claude" / "skills").mkdir(parents=True)
+    monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
+
+    assert _load_skill_content("nonexistent") is None

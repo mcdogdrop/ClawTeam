@@ -49,6 +49,7 @@ class TmuxBackend(SpawnBackend):
         env: dict[str, str] | None = None,
         cwd: str | None = None,
         skip_permissions: bool = False,
+        system_prompt: str | None = None,
     ) -> str:
         if not shutil.which("tmux"):
             return "Error: tmux not installed"
@@ -90,6 +91,9 @@ class TmuxBackend(SpawnBackend):
         validation_command = normalized_command
         final_command = list(prepared.final_command)
         post_launch_prompt = prepared.post_launch_prompt
+        if system_prompt and is_claude_command(normalized_command):
+            insert_at = final_command.index("-p") if "-p" in final_command else len(final_command)
+            final_command[insert_at:insert_at] = ["--append-system-prompt", system_prompt]
 
         command_error = validate_spawn_command(validation_command, path=env_vars["PATH"], cwd=cwd)
         if command_error:

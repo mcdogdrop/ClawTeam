@@ -236,6 +236,45 @@ def test_spawn_cli_uses_single_profile_implicitly(monkeypatch, tmp_path):
     assert call["env"]["KIMI_API_KEY"] == "moonshot-secret"
 
 
+def test_spawn_cli_loads_skills_into_system_prompt(monkeypatch, tmp_path):
+    monkeypatch.setenv("CLAWTEAM_DATA_DIR", str(tmp_path / ".clawteam"))
+    monkeypatch.setenv("HOME", str(tmp_path))
+    TeamManager.create_team(
+        name="demo",
+        leader_name="leader",
+        leader_id="leader001",
+    )
+    backend = RecordingBackend()
+    monkeypatch.setattr("clawteam.spawn.get_backend", lambda _: backend)
+
+    skills_root = tmp_path / ".claude" / "skills"
+    skill_dir = skills_root / "reviewer"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text("Always review carefully.", encoding="utf-8")
+
+    runner = CliRunner()
+    result = runner.invoke(
+        app,
+        [
+            "spawn",
+            "subprocess",
+            "claude",
+            "--team",
+            "demo",
+            "--agent-name",
+            "alice",
+            "--no-workspace",
+            "--skill",
+            "reviewer",
+        ],
+        env={"HOME": str(tmp_path), "CLAWTEAM_DATA_DIR": str(tmp_path / ".clawteam")},
+    )
+
+    assert result.exit_code == 0
+    call = backend.calls[0]
+    assert call["system_prompt"] == "Always review carefully."
+
+
 def test_spawn_cli_errors_when_multiple_profiles_exist_without_default(monkeypatch, tmp_path):
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("CLAWTEAM_DATA_DIR", str(tmp_path / ".clawteam"))
